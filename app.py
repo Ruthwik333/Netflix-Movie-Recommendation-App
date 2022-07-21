@@ -78,7 +78,7 @@ st.write('  '
          )
 st.write(' ')
 
-EDA = st.checkbox('Show Netflix Exploratory Data Analysis')
+EDA = st.checkbox('Check out my kaggle Profile')
 if EDA :
     st.write(
-        "check out this [link](https://www.kaggle.com/code/rushikeshdane20/in-depth-analysis-of-netflix-with-plotly)")
+        "check out this [link](https://www.kaggle.com/ruthwikjavvadi)")
