@@ -1,84 +1,56 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-from streamlit_lottie import st_lottie
-import json
-
-def load_lottiefile(filepath: str):
-    with open(filepath, "r") as f:
-        return json.load(f)
-
-
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
-
-netflix_data = pd.read_csv('netflix_titles.csv')
-
-
-tfidf = TfidfVectorizer(stop_words='english')
-netflix_data['description'] = netflix_data['description'].fillna('')
-tfidf_matrix = tfidf.fit_transform(netflix_data['description'])
-
-from sklearn.metrics.pairwise import linear_kernel
-cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
-
-indices = pd.Series(netflix_data.index, index=netflix_data['title']).drop_duplicates()
-
-def get_recommendations(title, cosine_sim=cosine_sim):
-    idx = indices[title]
-    sim_scores = list(enumerate(cosine_sim[idx]))
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-    sim_scores = sim_scores[1:11]
-    movie_indices = [i[0] for i in sim_scores]
-    return netflix_data.iloc[movie_indices]
-
-#print(get_recommendations('Dark'))
-#tfidf_matrix.shape
-def Table(df):
-    fig=go.Figure(go.Table( columnorder = [1,2,3],
-          columnwidth = [10,28],
-            header=dict(values=[' Title','Description'],
-                        line_color='black',font=dict(color='black',size= 19),height=40,
-                        fill_color='#dd571c',#
-                        align=['left','center']),
-                cells=dict(values=[df.title,df.description],
-                       fill_color='#ffdac4',line_color='grey',
-                           font=dict(color='black', family="Lato", size=16),
-                       align='left')))
-    fig.update_layout(height=500, title ={'text': "Top 10 Movie Recommendations", 'font': {'size': 22}},title_x=0.5
-                     )
-    return st.plotly_chart(fig,use_container_width=True)
-movie_list = netflix_data['title'].values
+from sklearn.preprocessing import StandardScaler
 
 
-####################################################################
-#streamlit
-##################################################################
+@st.cache(suppress_st_warning=True)
+def recommend(movie):   
+    rec_list = []                                      
+    movies = new_df[new_df['Title'] == movie].index[0]
+    distance = sorted(list(enumerate(similarity[movies])),reverse=True,key = lambda x: x[1])
+    for i in distance[1:11]:
+        rec_list.append(new_df.iloc[i[0]].Title)
+    return rec_list
 
-st.header('Netflix Movie Recommendation System ')
-lottie_coding = load_lottiefile("m4.json")
-st_lottie(
-    lottie_coding,
-    speed=1,
-    reverse=False,
-    loop=True,
-    quality="low",height=220
-)
-selected_movie = st.selectbox(
-    "Type or select a movie from the dropdown",
-    movie_list
+@st.cache(suppress_st_warning=True)
+def load_data(fpath):
+    data = pd.read_csv(fpath)
+    data = data.replace(np.nan,'')
+    df = data[['show_id','type','title','director','cast','country','rating','description']]
+    return df
+         
+data = load_data('netflix_titles.csv')
+new_df = pd.read_csv('dataset.csv')
+
+
+tfidf = TfidfVectorizer(strip_accents='ascii',analyzer='word',stop_words='english',max_features=15000)
+vectorizer = tfidf.fit_transform(new_df['Info'])
+similarity = cosine_similarity(vectorizer)
+
+
+st.title('Netflix Recommender System')
+type_ = st.radio(
+    'What you want to watch?',
+    ('Movie','Series')
 )
 
-if st.button('Show Recommendation'):
-    recommended_movie_names = get_recommendations(selected_movie)
-    #list_of_recommended_movie = recommended_movie_names.to_list()
-   # st.write(recommended_movie_names[['title', 'description']])
-    Table(recommended_movie_names)
-    
-st.write('  '
-         )
-st.write(' ')
+if type_ == 'Movie':
+    options = st.selectbox(
+        'Type movie name...',
+        data[data['type']=='Movie']['title'].tolist()
+    )
+else:
+    options = st.selectbox(
+        'Type series name...',
+        data[data['type']=='TV Show']['title'].tolist()
+    )
 
-EDA = st.checkbox('Check out my kaggle Profile')
-if EDA :
-    st.write(
-        "check out this [link](https://www.kaggle.com/ruthwikjavvadi)")
+recommendations = recommend(options)
+st.write(f"If you're watching {options} then...")
+st.subheader('You should also watch')
+with st.container():
+    for suggestions in recommendations:
+        st.write(suggestions)
